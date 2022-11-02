@@ -50,6 +50,27 @@ impl Frac {
             self.denom * other.denom,
         )
     }
+    pub fn subtract(&self, other: Frac) -> Self {
+        Self::new(
+            self.num * other.denom - other.num * self.denom,
+            self.denom * other.denom,
+        )
+    }
+    pub fn multiply(&self, other: Frac) -> Self {
+        Self::new(
+            self.num * other.num,
+            self.denom * other.denom,
+        )
+    }
+    pub fn divide(&self, other: Frac) -> Self {
+        Self::new(
+            self.num * other.denom,
+            self.denom * other.num,
+        )
+    }
+    pub fn int(&self) -> i128 {
+        return self.num / self.denom;
+    }
     pub fn simplify(&self) -> Self {
         let g = gcd(self.num, self.denom);
         return Frac::new_unchecked(self.num / g, self.denom / g);
@@ -78,13 +99,15 @@ fn eval(code: &String) -> String {
     if code.to_string() == "clear" { return "\x1b[1;1H\x1b[2J\x1b[33mScreen Cleared\x1b[0m".to_string(); }
     if code.to_string() == "" || code.to_string() == "help" { return "Type numbers to push them to the stack, and type opperators to perform them on elements on the stack.\n\tEX:\t2 2 +\n\t\t4".to_string(); }
     let binding = code.to_string().trim().to_string();
-    let tokens: Vec<&str> = binding.split(' ').collect();
+    let mut tokens: Vec<&str> = binding.split(&[' ','\t','\n'][..]).collect();
+    tokens = tokens.iter().filter(|&&token| token != "").cloned().collect();
     let mut stack: LinkedList<Frac> = LinkedList::<Frac>::new();
     for token in &tokens {
         if token.chars().all(char::is_numeric) {
             stack.push_front(Frac::new_int(i128::from_str_radix(token, 10).expect("A number")));
         } else {
             match *token {
+                //"" => {},
                 "x" => {stack.pop_front();}, // Delete
                 "+" => {
                     let n1 = stack.pop_front().expect("The second number for addition");
@@ -94,29 +117,33 @@ fn eval(code: &String) -> String {
                 "-" => {
                     let n1 = stack.pop_front().expect("The second number for addition");
                     let n0 = stack.pop_front().expect("The first number for addition");
-                    stack.push_front(n0.add(n1));
+                    stack.push_front(n0.subtract(n1));
                 }, // Subtract
                 "*" => {
                     let n1 = stack.pop_front().expect("The second number for addition");
                     let n0 = stack.pop_front().expect("The first number for addition");
-                    stack.push_front(n0.add(n1));
+                    stack.push_front(n0.multiply(n1));
                 }, // Multipluy
                 "/" => {
                     let n1 = stack.pop_front().expect("The second number for addition");
                     let n0 = stack.pop_front().expect("The first number for addition");
-                    stack.push_front(n0.add(n1));
+                    stack.push_front(n0.divide(n1));
                 }, // Divide
                 ":" => {
-                    let n1 = stack.pop_front().expect("The second number for addition");
-                    let n0 = stack.pop_front().expect("The first number for addition");
-                    stack.push_front(n0.add(n1));
+                    let n = stack.pop_front().expect("The number to duplicate");
+                    stack.push_front(n);
+                    stack.push_front(n);
                 }, // Duplicate
                 "." => {
-                    let n1 = stack.pop_front().expect("The second number for addition");
-                    let n0 = stack.pop_front().expect("The first number for addition");
-                    stack.push_front(n0.add(n1));
+                    let n = stack.pop_front().expect("The number of elements to push back");
+                    let e = stack.pop_front().expect("The element to be pushed back");
+                    let mut rest: LinkedList<Frac> = LinkedList::<Frac>::new();
+                    for _i in 0..n.int() {
+                        rest.push_back(stack.pop_front().expect("An element to shove backwards"));
+                    }
+                    stack.push_front(e);
+                    stack.append(&mut rest);
                 }, // Push backwards
-                "" => {},
                 _ => {println!("{} is not a valid token", token);}
             }
         }
