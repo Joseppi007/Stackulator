@@ -2,21 +2,51 @@ use std::io;
 use std::fmt;
 use std::collections::LinkedList;
 
-fn gcd(x: i128, y: i128) -> i128 {
-    if x == 0 || y == 0 {return 0;}
-    if x > y {
-        let g = gcd(x%y, y);
-        if g == 0 {
-            return y;
-        }
-        g
-    } else {
-        let g = gcd(y%x, x);
-        if g == 0 {
-            return x;
-        }
-        g
+fn min(x: i128, y: i128) -> i128 {
+    if x < y {
+        return x;
     }
+    return y;
+}
+
+/// Finds the greatest common denominator
+/// ```
+/// assert_eq!(gcd(69, 420), 3);
+/// assert_eq!(gcd(621, 621), 621);
+/// assert_eq!(gcd(666, 665), 1);
+/// ```
+fn gcd(x: i128, y: i128) -> i128 {
+    //if x == 0 || y == 0 {return 0;}
+    //if x > y {
+    //    let g = gcd(x%y, y);
+    //    if g == 0 {
+    //        return y;
+    //    }
+    //    g
+    //} else {
+    //    let g = gcd(y%x, x);
+    //    if g == 0 {
+    //        return x;
+    //    }
+    //    g
+    //}
+
+    let mut g = -1;
+    let mut last_g = min(x, y);
+    let mut a = x;
+    let mut b = y;
+    while g != 0 {
+        if a == 0 || b == 0 {return last_g;}
+        if a < b || b < 0 {
+            let c = b;
+            b = a;
+            a = c;
+        }
+        a = a%b;
+        last_g = g;
+        g = a;
+    }
+    return last_g;
 }
 
 #[derive(Clone, Copy)]
@@ -72,7 +102,9 @@ impl Frac {
         return self.num / self.denom;
     }
     pub fn simplify(&self) -> Self {
-        let g = gcd(self.num, self.denom);
+        let g: i128;
+        if self.denom < 0 && self.num < 0 {g = -gcd(-self.num, -self.denom);}
+        else {g = gcd(self.num, self.denom);}
         let r = Frac::new_unchecked(self.num / g, self.denom / g);
         if r.denom < 0 && r.num > 0 {return Frac::new_unchecked(-r.num, -r.denom);}
         return r;
