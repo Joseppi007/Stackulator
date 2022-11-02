@@ -31,7 +31,7 @@ fn gcd(x: i128, y: i128) -> i128 {
     //    g
     //}
 
-    let mut g = -1;
+    let mut g = min(x, y);
     let mut last_g = min(x, y);
     let mut a = x;
     let mut b = y;
@@ -103,8 +103,8 @@ impl Frac {
     }
     pub fn simplify(&self) -> Self {
         let g: i128;
-        if self.denom < 0 && self.num < 0 {g = -gcd(-self.num, -self.denom);}
-        else {g = gcd(self.num, self.denom);}
+        //if self.denom < 0 && self.num < 0 {g = -gcd(-self.num, -self.denom);}
+        /*else {*/g = gcd(self.num, self.denom);//}
         let r = Frac::new_unchecked(self.num / g, self.denom / g);
         if r.denom < 0 && r.num > 0 {return Frac::new_unchecked(-r.num, -r.denom);}
         return r;
