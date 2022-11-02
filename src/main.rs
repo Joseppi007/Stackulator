@@ -1,5 +1,6 @@
 use std::io;
 use std::fmt;
+use std::collections::LinkedList;
 
 fn gcd(x: i128, y: i128) -> i128 {
     if x == 0 || y == 0 {return 0;}
@@ -75,9 +76,52 @@ impl fmt::Display for Frac {
 
 fn eval(code: &String) -> String {
     if code.to_string() == "clear" { return "\x1b[1;1H\x1b[2J\x1b[33mScreen Cleared\x1b[0m".to_string(); }
+    if code.to_string() == "" || code.to_string() == "help" { return "Type numbers to push them to the stack, and type opperators to perform them on elements on the stack.\n\tEX:\t2 2 +\n\t\t4".to_string(); }
     let binding = code.to_string().trim().to_string();
     let tokens: Vec<&str> = binding.split(' ').collect();
-    (tokens[tokens.len()-1]).to_string()
+    let mut stack: LinkedList<Frac> = LinkedList::<Frac>::new();
+    for token in &tokens {
+        if token.chars().all(char::is_numeric) {
+            stack.push_front(Frac::new_int(i128::from_str_radix(token, 10).expect("A number")));
+        } else {
+            match *token {
+                "x" => {stack.pop_front();}, // Delete
+                "+" => {
+                    let n1 = stack.pop_front().expect("The second number for addition");
+                    let n0 = stack.pop_front().expect("The first number for addition");
+                    stack.push_front(n0.add(n1));
+                }, // Add
+                "-" => {
+                    let n1 = stack.pop_front().expect("The second number for addition");
+                    let n0 = stack.pop_front().expect("The first number for addition");
+                    stack.push_front(n0.add(n1));
+                }, // Subtract
+                "*" => {
+                    let n1 = stack.pop_front().expect("The second number for addition");
+                    let n0 = stack.pop_front().expect("The first number for addition");
+                    stack.push_front(n0.add(n1));
+                }, // Multipluy
+                "/" => {
+                    let n1 = stack.pop_front().expect("The second number for addition");
+                    let n0 = stack.pop_front().expect("The first number for addition");
+                    stack.push_front(n0.add(n1));
+                }, // Divide
+                ":" => {
+                    let n1 = stack.pop_front().expect("The second number for addition");
+                    let n0 = stack.pop_front().expect("The first number for addition");
+                    stack.push_front(n0.add(n1));
+                }, // Duplicate
+                "." => {
+                    let n1 = stack.pop_front().expect("The second number for addition");
+                    let n0 = stack.pop_front().expect("The first number for addition");
+                    stack.push_front(n0.add(n1));
+                }, // Push backwards
+                "" => {},
+                _ => {println!("{} is not a valid token", token);}
+            }
+        }
+    }
+    stack.pop_front().expect("Print the top of the stack").to_string()
 }
 
 fn main() {
@@ -87,6 +131,10 @@ fn main() {
         code = String::new();    // Clear out any old commands
         io::stdin().read_line(&mut code).expect("A simple prompt to process");    // Take in input
         code = code.trim().to_string();    // Remove the newlines
-        println!("{} {} {}", eval(&code), Frac::new(69,420), Frac::new(69,420).simplify());
+        if code == "quit" || code == "exit" || code == "stop" {
+            println!("Bye :)");
+        } else {
+            println!("{}", eval(&code));
+        }
     }
 }
