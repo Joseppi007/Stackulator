@@ -129,60 +129,64 @@ impl fmt::Display for Frac {
     }
 }
 
-fn eval(code: &String) -> String {
-    if code.to_string() == "clear" { return "\x1b[1;1H\x1b[2J\x1b[33mScreen Cleared\x1b[0m".to_string(); }
-    if code.to_string() == "" || code.to_string() == "help" { return "Type numbers to push them to the stack, and type opperators to perform them on elements on the stack.\n\tEX:\t2 2 +\n\t\t4".to_string(); }
+fn eval(code: &String) -> Result<String, String> {
+    if code.to_string() == "clear" { return Ok("\x1b[1;1H\x1b[2J\x1b[33mScreen Cleared\x1b[0m".to_string()); }
+    if code.to_string() == "" || code.to_string() == "help" { return Ok("Type numbers to push them to the stack, and type opperators to perform them on elements on the stack.\n\tEX:\t2 2 +\n\t\t4".to_string()); }
     let binding = code.to_string().trim().to_string();
     let mut tokens: Vec<&str> = binding.split(&[' ','\t','\n'][..]).collect();
     tokens = tokens.iter().filter(|&&token| token != "").cloned().collect();
     let mut stack: LinkedList<Frac> = LinkedList::<Frac>::new();
     for token in &tokens {
         if token.chars().all(char::is_numeric) {
-            stack.push_front(Frac::new_int(i128::from_str_radix(token, 10).expect("A number")));
+            stack.push_front(Frac::new_int(i128::from_str_radix(token, 10).expect("Some number")));
         } else {
             match *token {
                 //"" => {},
                 "x" => {stack.pop_front();}, // Delete
                 "+" => {
-                    let n1 = stack.pop_front().expect("The second number for addition");
-                    let n0 = stack.pop_front().expect("The first number for addition");
-                    stack.push_front(n0.add(n1));
+                    let n1 = stack.pop_front().ok_or("Second number in addition missing");
+                    let n0 = stack.pop_front().ok_or("First number in addition missing");
+                    stack.push_front(n0?.add(n1?));
                 }, // Add
                 "-" => {
-                    let n1 = stack.pop_front().expect("The second number for addition");
-                    let n0 = stack.pop_front().expect("The first number for addition");
-                    stack.push_front(n0.subtract(n1));
+                    let n1 = stack.pop_front().ok_or("Second number in subtraction missing");
+                    let n0 = stack.pop_front().ok_or("Firts number in subtraction missing");
+                    stack.push_front(n0?.subtract(n1?));
                 }, // Subtract
                 "*" => {
-                    let n1 = stack.pop_front().expect("The second number for addition");
-                    let n0 = stack.pop_front().expect("The first number for addition");
-                    stack.push_front(n0.multiply(n1));
+                    let n1 = stack.pop_front().ok_or("Second number in multiplication missing");
+                    let n0 = stack.pop_front().ok_or("First number in multiplication missing");
+                    stack.push_front(n0?.multiply(n1?));
                 }, // Multipluy
                 "/" => {
-                    let n1 = stack.pop_front().expect("The second number for addition");
-                    let n0 = stack.pop_front().expect("The first number for addition");
-                    stack.push_front(n0.divide(n1));
+                    let n1 = stack.pop_front().ok_or("Second number in division missing");
+                    let n0 = stack.pop_front().ok_or("First number in division missing");
+                    stack.push_front(n0?.divide(n1?));
                 }, // Divide
                 ":" => {
-                    let n = stack.pop_front().expect("The number to duplicate");
-                    stack.push_front(n);
-                    stack.push_front(n);
+                    let n = stack.pop_front().ok_or("Nothing to duplicate");
+                    stack.push_front(n?);
+                    stack.push_front(n?);
                 }, // Duplicate
                 "." => {
-                    let n = stack.pop_front().expect("The number of elements to push back");
-                    let e = stack.pop_front().expect("The element to be pushed back");
+                    let n = stack.pop_front().ok_or("No number of elements to push back through provided");
+                    let e = stack.pop_front().ok_or("Nothing to push backwards");
                     let mut rest: LinkedList<Frac> = LinkedList::<Frac>::new();
-                    for _i in 0..n.int() {
-                        rest.push_back(stack.pop_front().expect("An element to shove backwards"));
+                    for _i in 0..n?.int() {
+                        rest.push_back(stack.pop_front().ok_or("Not enough space to push back that far")?);
                     }
-                    stack.push_front(e);
+                    stack.push_front(e?);
                     stack.append(&mut rest);
                 }, // Push backwards
                 _ => {println!("{} is not a valid token", token);}
             }
         }
     }
-    stack.pop_front().expect("Print the top of the stack").to_string()
+    match stack.pop_front() {
+        Some(v) => {return Ok(v.to_string());}
+        None => {return Err("Nothing to print left on the stack".to_string());}
+    }
+    //Ok(stack.pop_front().ok_or("Nothing to print left on stack").to_string())
 }
 
 fn main() {
@@ -195,7 +199,11 @@ fn main() {
         if code == "quit" || code == "exit" || code == "stop" {
             println!("Bye :)");
         } else {
-            println!("{}", eval(&code));
+            let r = eval(&code);
+            match r {
+                Ok(ok) => {println!("{}", ok);}
+                Err(e) => {println!("ERROR: {}", e);}
+            }
         }
     }
 }
