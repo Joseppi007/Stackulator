@@ -73,7 +73,9 @@ impl Frac {
     }
     pub fn simplify(&self) -> Self {
         let g = gcd(self.num, self.denom);
-        return Frac::new_unchecked(self.num / g, self.denom / g);
+        let r = Frac::new_unchecked(self.num / g, self.denom / g);
+        if r.denom < 0 && r.num > 0 {return Frac::new_unchecked(-r.num, -r.denom);}
+        return r;
     }
 }
 
