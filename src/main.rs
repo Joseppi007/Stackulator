@@ -174,7 +174,7 @@ impl fmt::Display for Frac {
                 write!(f, "NaN")
             }
         } else {
-            write!(f, "{}/{}", self.num, self.denom)
+            write!(f, "{} {}/{} ({})", self.num / self.denom, self.num % self.denom, self.denom, (self.num as f64)/(self.denom as f64))
         }
     }
 }
@@ -277,6 +277,7 @@ fn main() {
         code = code.trim().to_string();    // Remove the newlines
         if code == "quit" || code == "exit" || code == "stop" {
             println!("Bye :)");
+            last_line = code;
         } else if code == "" {
             let r = eval(&last_line, &mut data);
             match r {
