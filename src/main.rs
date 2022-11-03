@@ -1,7 +1,8 @@
 use std::io;
 use std::fmt;
-use std::collections::LinkedList;
+use std::collections::{LinkedList, HashMap};
 use std::ops;
+use substring::Substring;
 
 fn min(x: i128, y: i128) -> i128 {
     if x < y {
@@ -178,7 +179,7 @@ impl fmt::Display for Frac {
     }
 }
 
-fn eval(code: &String) -> Result<String, String> {
+fn eval(code: &String, data: &mut HashMap<String, Frac>) -> Result<String, String> {
     if code.to_string() == "clear" { return Ok("\x1b[1;1H\x1b[2J\x1b[33mScreen Cleared\x1b[0m".to_string()); }
     if code.to_string() == "" || code.to_string() == "help" { return Ok("Type numbers to push them to the stack, and type opperators to perform them on elements on the stack.\n\tEX:\t2 2 +\n\t\t4".to_string()); }
     let binding = code.to_string().trim().to_string();
@@ -230,12 +231,35 @@ fn eval(code: &String) -> Result<String, String> {
                     }
                     //stack.append(&mut rest);
                 }, // Push backwards
-                _ => {println!("{} is not a valid token", token);}
+                _ => {
+                    if token.substring(0, 1) == "<" { // load var
+                        let var_name = token.substring(1, token.len());
+                        //println!("Load var {}", var_name);
+                        let v = data.get(var_name).ok_or("Load a variable from the data");
+                        match v {
+                            Ok(d) => {stack.push_front(*d);},
+                            Err(_e) => {stack.push_front(Frac::new_int(0));}
+                        }
+                    } else if token.substring(0, 1) == ">" { // set var 
+                        let var_name = token.substring(1, token.len());
+                        //println!("Save var {}", var_name);
+                        let v = stack.pop_front().ok_or("Number to save to variable");
+                        match v {
+                            Ok(d) => {data.insert(var_name.to_string(), d);},
+                            Err(_e) => {}
+                        }
+                    } else {
+                        println!("{} is not a valid token", token);
+                    }
+                }
             }
         }
     }
     match stack.pop_front() {
-        Some(v) => {return Ok(v.to_string());}
+        Some(v) => {
+            data.insert("".to_string(), v);
+            return Ok(v.to_string());
+        }
         None => {return Err("Nothing to print left on the stack".to_string());}
     }
     //Ok(stack.pop_front().ok_or("Nothing to print left on stack").to_string())
@@ -243,19 +267,29 @@ fn eval(code: &String) -> Result<String, String> {
 
 fn main() {
     println!("Stackulator: The Stack-Based Calculator");
-    let mut code: String = String::new();
-    while code != "quit" && code != "exit" && code != "stop" {
+    let mut code: String;
+    let mut data: HashMap<String, Frac> = HashMap::<String, Frac>::new();
+    data.insert("".to_string(), Frac::new_int(0));
+    let mut last_line: String = "help".to_string();
+    while last_line != "quit" && last_line != "exit" && last_line != "stop" {
         code = String::new();    // Clear out any old commands
         io::stdin().read_line(&mut code).expect("A simple prompt to process");    // Take in input
         code = code.trim().to_string();    // Remove the newlines
         if code == "quit" || code == "exit" || code == "stop" {
             println!("Bye :)");
-        } else {
-            let r = eval(&code);
+        } else if code == "" {
+            let r = eval(&last_line, &mut data);
             match r {
                 Ok(ok) => {println!("{}", ok);}
                 Err(e) => {println!("ERROR: {}", e);}
             }
+        } else {
+            let r = eval(&code, &mut data);
+            match r {
+                Ok(ok) => {println!("{}", ok);}
+                Err(e) => {println!("ERROR: {}", e);}
+            }
+            last_line = code;
         }
     }
 }
