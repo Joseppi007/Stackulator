@@ -174,7 +174,11 @@ impl fmt::Display for Frac {
                 write!(f, "NaN")
             }
         } else {
-            write!(f, "{} {}/{} ({})", self.num / self.denom, self.num % self.denom, self.denom, (self.num as f64)/(self.denom as f64))
+            if self.num / self.denom == 0 {
+                write!(f, "{}/{}\t\t({})", (self.num % self.denom).abs(), self.denom, (self.num as f64)/(self.denom as f64))
+            } else {
+                write!(f, "{}/{}\t\t({})\t\t[{} {}/{}]", self.num, self.denom, (self.num as f64)/(self.denom as f64), self.num / self.denom, (self.num % self.denom).abs(), self.denom)
+            }
         }
     }
 }
