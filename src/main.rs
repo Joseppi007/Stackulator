@@ -174,18 +174,55 @@ impl fmt::Display for Frac {
                 write!(f, "NaN")
             }
         } else {
-            if self.num / self.denom == 0 {
-                write!(f, "{}/{}\t\t({})", (self.num % self.denom).abs(), self.denom, (self.num as f64)/(self.denom as f64))
+            write!(f, "{:<19} ({}/{})", (self.num as f64)/(self.denom as f64), self.num, self.denom)
+
+            /*if self.num / self.denom == 0 {
+                write!(f, "{:>40}/{:<40} ({:^40})", (self.num % self.denom).abs(), self.denom, (self.num as f64)/(self.denom as f64))
             } else {
-                write!(f, "{}/{}\t\t({})\t\t[{} {}/{}]", self.num, self.denom, (self.num as f64)/(self.denom as f64), self.num / self.denom, (self.num % self.denom).abs(), self.denom)
-            }
+                write!(f, "{:>40}/{:<40} ({:^40}) [{:>81}/{:<40}]", self.num, self.denom, (self.num as f64)/(self.denom as f64), format!("{} {}", self.num / self.denom, (self.num % self.denom).abs()), self.denom)
+            }*/
         }
     }
 }
 
-fn eval(code: &String, data: &mut HashMap<String, Frac>) -> Result<String, String> {
-    if code.to_string() == "clear" { return Ok("\x1b[1;1H\x1b[2J\x1b[33mScreen Cleared\x1b[0m".to_string()); }
-    if code.to_string() == "" || code.to_string() == "help" { return Ok("Type numbers to push them to the stack, and type opperators to perform them on elements on the stack.\n\tEX:\t2 2 +\n\t\t4".to_string()); }
+pub struct Stack {
+    pub data: LinkedList<Val>,
+}
+
+impl fmt::Display for Stack {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut s: String = "[".to_string();
+        for e in &self.data {
+            s = format!("{}, {}", s, e);
+        }
+        s = format!("{}]", s);
+        write!(f, "{}", s) 
+    }
+}
+
+pub struct Func {
+    pub code: String,
+}
+
+pub enum Val {
+    Frac(Frac),
+    Stack(Stack),
+    Func(Func),
+}
+
+impl fmt::Display for Val {
+    fn fmt(&self, fo: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Val::Frac(fr) => {write!(fo, "{}", fr)}
+            Val::Stack(s) => {write!(fo, "{}", s)}
+            Val::Func(fu) => {write!(fo, "{}", fu.code)}
+        }
+    }
+}
+
+fn eval(code: &String, data: &mut HashMap<String, Frac>) -> Result<Val, String> {
+    //if code.to_string() == "clear" { return Ok("\x1b[1;1H\x1b[2J\x1b[33mScreen Cleared\x1b[0m".to_string()); }
+    //if code.to_string() == "" || code.to_string() == "help" { return Ok("Type numbers to push them to the stack, and type opperators to perform them on elements on the stack.\n\tEX:\t2 2 +\n\t\t4".to_string()); }
     let binding = code.to_string().trim().to_string();
     let mut tokens: Vec<&str> = binding.split(&[' ','\t','\n'][..]).collect();
     tokens = tokens.iter().filter(|&&token| token != "").cloned().collect();
@@ -262,7 +299,7 @@ fn eval(code: &String, data: &mut HashMap<String, Frac>) -> Result<String, Strin
     match stack.pop_front() {
         Some(v) => {
             data.insert("".to_string(), v);
-            return Ok(v.to_string());
+            return Ok(Val::Frac(v));
         }
         None => {return Err("Nothing to print left on the stack".to_string());}
     }
