@@ -1,6 +1,7 @@
 use std::io;
 use std::fmt;
 use std::collections::LinkedList;
+use std::ops;
 
 fn min(x: i128, y: i128) -> i128 {
     if x < y {
@@ -74,6 +75,7 @@ impl Frac {
             denom:1,
         }
     }
+    /*
     pub fn add(&self, other: Frac) -> Self {
         Self::new(
             self.num * other.denom + other.num * self.denom,
@@ -98,10 +100,17 @@ impl Frac {
             self.denom * other.num,
         )
     }
+    */
     pub fn int(&self) -> i128 {
         return self.num / self.denom;
     }
     pub fn simplify(&self) -> Self {
+        if self.num == 0 {return Frac::new_unchecked(0, 1);}
+        if self.denom == 0 {
+            if self.num > 0 {return Frac::new_unchecked(1, 0);}
+            if self.num < 0 {return Frac::new_unchecked(-1, 0);}
+            return Frac::new_unchecked(0, 0);
+        }
         let g: i128;
         //if self.denom < 0 && self.num < 0 {g = -gcd(-self.num, -self.denom);}
         /*else {*/g = gcd(self.num, self.denom);//}
@@ -111,12 +120,52 @@ impl Frac {
     }
 }
 
+impl ops::Add<Frac> for Frac {
+    type Output = Frac;
+    fn add(self, _rhs: Frac) -> Frac {
+        Self::new(
+            self.num * _rhs.denom + _rhs.num * self.denom,
+            self.denom * _rhs.denom,
+        )
+    }
+}
+
+impl ops::Sub<Frac> for Frac {
+    type Output = Frac;
+    fn sub(self, _rhs: Frac) -> Frac {
+        Self::new(
+            self.num * _rhs.denom - _rhs.num * self.denom,
+            self.denom * _rhs.denom,
+        )
+    }
+}
+
+impl ops::Mul<Frac> for Frac {
+    type Output = Frac;
+    fn mul(self, _rhs: Frac) -> Frac {
+        Self::new(
+            self.num * _rhs.num,
+            self.denom * _rhs.denom,
+        )
+    }
+}
+
+impl ops::Div<Frac> for Frac {
+    type Output = Frac;
+    fn div(self, _rhs: Frac) -> Frac {
+        Self::new(
+            self.num * _rhs.denom,
+            self.denom * _rhs.num,
+        )
+    }
+}
+
 impl fmt::Display for Frac {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.denom == 1 {
             write!(f, "{}", self.num)
         } else if self.denom == 0 {
-            if self.num < 0 {
+            if self.num > 0 {
                 write!(f, "Infinity")
             } else if self.num < 0 {
                 write!(f, "-Infinity")
@@ -146,22 +195,22 @@ fn eval(code: &String) -> Result<String, String> {
                 "+" => {
                     let n1 = stack.pop_front().ok_or("Second number in addition missing");
                     let n0 = stack.pop_front().ok_or("First number in addition missing");
-                    stack.push_front(n0?.add(n1?));
+                    stack.push_front(n0? + n1?);
                 }, // Add
                 "-" => {
                     let n1 = stack.pop_front().ok_or("Second number in subtraction missing");
                     let n0 = stack.pop_front().ok_or("Firts number in subtraction missing");
-                    stack.push_front(n0?.subtract(n1?));
+                    stack.push_front(n0? - n1?);
                 }, // Subtract
                 "*" => {
                     let n1 = stack.pop_front().ok_or("Second number in multiplication missing");
                     let n0 = stack.pop_front().ok_or("First number in multiplication missing");
-                    stack.push_front(n0?.multiply(n1?));
+                    stack.push_front(n0? * n1?);
                 }, // Multipluy
                 "/" => {
                     let n1 = stack.pop_front().ok_or("Second number in division missing");
                     let n0 = stack.pop_front().ok_or("First number in division missing");
-                    stack.push_front(n0?.divide(n1?));
+                    stack.push_front(n0? / n1?);
                 }, // Divide
                 ":" => {
                     let n = stack.pop_front().ok_or("Nothing to duplicate");
