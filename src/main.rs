@@ -173,10 +173,13 @@ fn eval(code: &String) -> Result<String, String> {
                     let e = stack.pop_front().ok_or("Nothing to push backwards");
                     let mut rest: LinkedList<Frac> = LinkedList::<Frac>::new();
                     for _i in 0..n?.int() {
-                        rest.push_back(stack.pop_front().ok_or("Not enough space to push back that far")?);
+                        rest.push_front(stack.pop_front().ok_or("Not enough space to push back that far")?);
                     }
                     stack.push_front(e?);
-                    stack.append(&mut rest);
+                    for r in rest {
+                        stack.push_front(r);
+                    }
+                    //stack.append(&mut rest);
                 }, // Push backwards
                 _ => {println!("{} is not a valid token", token);}
             }
