@@ -200,6 +200,12 @@ impl Stack {
     pub fn pop(&mut self) -> Option<Val> {
         self.data.pop_front()
     }
+    pub fn top(&self) -> Option<Val> {
+        match self.data.front() {
+            Some(s) => {Some(s.clone())},
+            None => {None}
+        }
+    }
     pub fn len(&self) -> Val {
         Val::Frac(Frac::new_int((self.data.len()) as i128))
     }
@@ -228,7 +234,7 @@ impl fmt::Display for Stack {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut s: String = "[".to_string();
         for e in &self.data {
-            s = format!("{}, {}", s, e);
+            s = format!("{}{}, ", s, e);
         }
         s = format!("{}]", s);
         write!(f, "{}", s) 
@@ -355,6 +361,12 @@ impl ops::Mul<Frac> for Func {
     }
 }
 
+impl fmt::Display for Func {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({})", self.code)
+    }
+}
+
 #[derive(Clone)]
 pub enum Val {
     Frac(Frac),
@@ -385,7 +397,7 @@ impl fmt::Display for Val {
         match self {
             Val::Frac(fr) => {write!(fo, "{}", fr)}
             Val::Stack(s) => {write!(fo, "{}", s)}
-            Val::Func(fu) => {write!(fo, "{}", fu.code)}
+            Val::Func(fu) => {write!(fo, "{}", fu)}
         }
     }
 }
@@ -506,7 +518,7 @@ impl ops::Div<Val> for Val {
     }
 }
 
-fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Result<Val, String> {
+fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Result<Stack, String> {
     //if code.to_string() == "clear" { return Ok("\x1b[1;1H\x1b[2J\x1b[33mScreen Cleared\x1b[0m".to_string()); }
     //if code.to_string() == "" || code.to_string() == "help" { return Ok("Type numbers to push them to the stack, and type opperators to perform them on elements on the stack.\n\tEX:\t2 2 +\n\t\t4".to_string()); }
     //let binding = code.to_string().trim().to_string();
@@ -574,6 +586,38 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
                 "[]" => {
                     stack.push(Val::Stack(Stack::new()));
                 },
+                "clear" => {
+                    print!("\x1b[1;1H\x1b[2J\x1b[0m");
+                },
+                "print" => {
+                    let v = stack.pop();
+                    match v {
+                        Some(some) => { print!("{}", some); },
+                        None => {}
+                    }
+                },
+                "println" => {
+                    let v = stack.pop();
+                    match v {
+                        Some(Val::Func(func)) => {
+                            if func.code.len() == 0 {
+                                println!(""); // Empty function will print as a newline, I suppose.
+                            } else {
+                                println!("{}", func);
+                            }
+                        },
+                        Some(some) => { println!("{}", some); },
+                        None => { println!(""); }
+                    }
+                },
+                "pchar" => {
+                    let v = stack.pop();
+                    match v {
+                        Some(Val::Frac(f)) => { print!("{}", char::from_u32(f.int() as u32).ok_or("Cannot make char")?); },
+                        Some(_) => {},
+                        None => {},
+                    }
+                },
                 _ => {
                     if token.substring(0, 1) == "<" { // load var
                         let var_name = token.substring(1, token.len());
@@ -600,13 +644,14 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
             }
         }
     }
-    match stack.pop() {
+    /*match stack.pop() {
         Some(v) => {
             data.insert("".to_string(), v.clone());
             return Ok(v);
         }
         None => {return Err("Nothing to print left on the stack".to_string());}
-    }
+    }*/
+    return Ok(stack.clone());
     //Ok(stack.pop().ok_or("Nothing to print left on stack").to_string())
 }
 
@@ -634,8 +679,19 @@ fn main() {
             let mut s: Stack = Stack::new();
             let r = eval(&code, &mut data, &mut s);
             match r {
-                Ok(ok) => {println!("{}", ok);},
-                Err(e) => {println!("ERROR: {}", e);}
+                Ok(o) => {
+                    match o.top() {
+                        Some(v) => {
+                            println!("{}", v);
+                        }
+                        None => {
+                            println!("Nothing to print left on the stack");
+                        }
+                    }
+                },
+                Err(e) => {
+                    println!("Something went wrong: {}", e);
+                }
             }
             last_line = code;
         }
