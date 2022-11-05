@@ -686,6 +686,17 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
                         stack.push(Val::Frac(Frac::new_int(0)));
                     }
                 },
+                ">" => {},
+                "<" => {},
+                ">=" => {},
+                "<=" => {},
+                "not" => {},
+                "and" => {},
+                "or" => {}
+                "xor" => {},
+                "if" => {},
+                "while" => {},
+                "rand" | "?" => {},
                 _ => {
                     if token.substring(0, 1) == "<" { // load var
                         let var_name = token.substring(1, token.len());
