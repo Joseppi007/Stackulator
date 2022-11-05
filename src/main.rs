@@ -288,9 +288,9 @@ impl Func {
         }
         Ok(ret)
     }*/
-    pub fn tokens(&self) -> Vec<&str> {
-        let mut next = "";
-        let mut tokens: Vec<&str> = Vec::<&str>::new();
+    pub fn tokens(&self) -> Vec<String> {
+        let mut next = "".to_string();
+        let mut tokens: Vec<&str> = Vec::<String>::new();
         let mut parentheses_counter: isize = 0;
         for char in self.code.chars() {
             match char {
@@ -298,27 +298,23 @@ impl Func {
                     if parentheses_counter == 0 {
                         if next != "" {
                             tokens.push(next);
-                            let x = "";
-                            next = x;
+                            next = "".to_string();
                         }
                     } else {
                         let x = (next.to_owned() + char.to_string().as_str()).as_str();
-                        next = x;
+                        next = (next.to_owned() + char.to_string().as_str());
                     }
                 }
                 '(' => {
                     parentheses_counter+=1;
-                    let x = (next.to_owned() + char.to_string().as_str()).as_str();
-                    next = x;
+                    next = (next.to_owned() + char.to_string().as_str());
                 }
                 ')' => {
                     parentheses_counter-=1;
-                    let x = (next.to_owned() + char.to_string().as_str()).as_str();
-                    next = x;
+                    next = (next.to_owned() + char.to_string().as_str());
                 }
                 _ => {
-                    let x = (next.to_owned() + char.to_string().as_str()).as_str();
-                    next = x;
+                    next = (next.to_owned() + char.to_string().as_str());
                 }
             }
         }
