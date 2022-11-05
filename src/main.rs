@@ -124,6 +124,31 @@ impl Frac {
     }
 }
 
+impl PartialOrd<Frac> for Frac {
+    //type Output = bool;
+    fn partial_cmp(&self, _rhs: &Frac) -> Option<std::cmp::Ordering> {
+        if *self == *_rhs {return Some(std::cmp::Ordering::Equal);}
+        if self.lt(_rhs) {return Some(std::cmp::Ordering::Less);}
+        return Some(std::cmp::Ordering::Greater)
+    }
+    fn lt(&self, _rhs: &Frac) -> bool {
+        let tmp = *self - *_rhs;
+        return tmp.num < 0;
+    }
+    fn gt(&self, _rhs: &Frac) -> bool {
+        let tmp = *self - *_rhs;
+        return tmp.num > 0;
+    }
+    fn le(&self, _rhs: &Frac) -> bool {
+        let tmp = *self - *_rhs;
+        return tmp.num <= 0;
+    }
+    fn ge(&self, _rhs: &Frac) -> bool {
+        let tmp = *self - *_rhs;
+        return tmp.num >= 0;
+    }
+}
+
 impl ops::Add<Frac> for Frac {
     type Output = Frac;
     fn add(self, _rhs: Frac) -> Frac {
@@ -686,10 +711,90 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
                         stack.push(Val::Frac(Frac::new_int(0)));
                     }
                 },
-                ">" => {},
-                "<" => {},
-                ">=" => {},
-                "<=" => {},
+                ">" => {
+                    let b = stack.pop().ok_or("You need to have two things to make a comparison")?;
+                    let a = stack.pop().ok_or("You need to have two things to make a comparison")?;
+                    match a {
+                        Val::Frac(f0) => {
+                            match b {
+                                Val::Frac(f1) => {
+                                    if f0 > f1 {
+                                        stack.push(Val::Frac(Frac::new_int(1)));
+                                    } else {
+                                        stack.push(Val::Frac(Frac::new_int(0)));
+                                    }
+                                },
+                                Val::Stack(_) => {None.ok_or("Incomperable :|")?;},
+                                Val::Func(_) => {None.ok_or("Incomperable :|")?;}
+                            }
+                        },
+                        Val::Stack(_) => {None.ok_or("Incomperable :|")?;},
+                        Val::Func(_) => {None.ok_or("Incomperable :|")?;},
+                    }
+                },
+                "<" => {
+                    let b = stack.pop().ok_or("You need to have two things to make a comparison")?;
+                    let a = stack.pop().ok_or("You need to have two things to make a comparison")?;
+                    match a {
+                        Val::Frac(f0) => {
+                            match b {
+                                Val::Frac(f1) => {
+                                    if f0 < f1 {
+                                        stack.push(Val::Frac(Frac::new_int(1)));
+                                    } else {
+                                        stack.push(Val::Frac(Frac::new_int(0)));
+                                    }
+                                },
+                                Val::Stack(_) => {None.ok_or("Incomperable :|")?;},
+                                Val::Func(_) => {None.ok_or("Incomperable :|")?;}
+                            }
+                        },
+                        Val::Stack(_) => {None.ok_or("Incomperable :|")?;},
+                        Val::Func(_) => {None.ok_or("Incomperable :|")?;},
+                    }
+                },
+                ">=" => {
+                    let b = stack.pop().ok_or("You need to have two things to make a comparison")?;
+                    let a = stack.pop().ok_or("You need to have two things to make a comparison")?;
+                    match a {
+                        Val::Frac(f0) => {
+                            match b {
+                                Val::Frac(f1) => {
+                                    if f0 >= f1 {
+                                        stack.push(Val::Frac(Frac::new_int(1)));
+                                    } else {
+                                        stack.push(Val::Frac(Frac::new_int(0)));
+                                    }
+                                },
+                                Val::Stack(_) => {None.ok_or("Incomperable :|")?;},
+                                Val::Func(_) => {None.ok_or("Incomperable :|")?;}
+                            }
+                        },
+                        Val::Stack(_) => {None.ok_or("Incomperable :|")?;},
+                        Val::Func(_) => {None.ok_or("Incomperable :|")?;},
+                    }
+                },
+                "<=" => {
+                    let b = stack.pop().ok_or("You need to have two things to make a comparison")?;
+                    let a = stack.pop().ok_or("You need to have two things to make a comparison")?;
+                    match a {
+                        Val::Frac(f0) => {
+                            match b {
+                                Val::Frac(f1) => {
+                                    if f0 <= f1 {
+                                        stack.push(Val::Frac(Frac::new_int(1)));
+                                    } else {
+                                        stack.push(Val::Frac(Frac::new_int(0)));
+                                    }
+                                },
+                                Val::Stack(_) => {None.ok_or("Incomperable :|")?;},
+                                Val::Func(_) => {None.ok_or("Incomperable :|")?;}
+                            }
+                        },
+                        Val::Stack(_) => {None.ok_or("Incomperable :|")?;},
+                        Val::Func(_) => {None.ok_or("Incomperable :|")?;},
+                    }
+                },
                 "not" => {},
                 "and" => {},
                 "or" => {}
@@ -698,16 +803,16 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
                 "while" => {},
                 "rand" | "?" => {},
                 _ => {
-                    if token.substring(0, 1) == "<" { // load var
-                        let var_name = token.substring(1, token.len());
+                    if token.substring(0, 2) == "<<" { // load var
+                        let var_name = token.substring(2, token.len());
                         //println!("Load var {}", var_name);
                         let v = data.get(var_name).ok_or("Load a variable from the data");
                         match v {
                             Ok(d) => {stack.push(d.clone());},
                             Err(_e) => {stack.push(Val::Frac(Frac::new_int(0)));}
                         }
-                    } else if token.substring(0, 1) == ">" { // set var 
-                        let var_name = token.substring(1, token.len());
+                    } else if token.substring(0, 2) == ">>" { // set var 
+                        let var_name = token.substring(2, token.len());
                         //println!("Save var {}", var_name);
                         let v = stack.pop().ok_or("Number to save to variable");
                         match v {
