@@ -526,13 +526,16 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
     //let mut tokens: LinkedList<&str> = LinkedList::<&str>::new();
     let main_func: Func = Func::new(code.to_string());
     let mut tokens = main_func.tokens();
+    tokens.reverse();
     tokens = tokens.iter().filter(|&token| token.to_string().as_str() != "").cloned().collect();
     //let mut stack: LinkedList<Frac> = LinkedList::<Frac>::new();
-    for token in &tokens {
+    //for token in &tokens {
+    while tokens.len() > 0 {
+        let token = tokens.pop().ok_or("Non-token tried to run")?;
         if token.chars().all(char::is_numeric) {
-            stack.push(Val::Frac(Frac::new_int(i128::from_str_radix(token, 10).expect("Some number"))));
+            stack.push(Val::Frac(Frac::new_int(i128::from_str_radix(&token, 10).expect("Some number"))));
         } else {
-            match (*token).as_str() {
+            match token.as_str() {
                 //"" => {},
                 "x" => {stack.pop();}, // Delete
                 "+" => {
@@ -618,6 +621,20 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
                         None => {},
                     }
                 },
+                "do" => {
+                    let f = stack.pop();
+                    match f {
+                        Some(Val::Func(func)) => {
+                            func.tokens();
+                        },
+                        Some(_) => {},
+                        None => {},
+                    }
+                },
+                "do_on" => {
+                    let f = stack.pop();
+                    let s = stack.pop();
+                },
                 _ => {
                     if token.substring(0, 1) == "<" { // load var
                         let var_name = token.substring(1, token.len());
@@ -682,6 +699,7 @@ fn main() {
                 Ok(o) => {
                     match o.top() {
                         Some(v) => {
+                            data.insert("".to_string(), v.clone());
                             println!("{}", v);
                         }
                         None => {
