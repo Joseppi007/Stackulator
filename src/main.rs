@@ -625,7 +625,11 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
                     let f = stack.pop();
                     match f {
                         Some(Val::Func(func)) => {
-                            func.tokens();
+                            let mut new_tokens = func.tokens();
+                            new_tokens.reverse();
+                            for t in new_tokens {
+                                tokens.push(t);
+                            }
                         },
                         Some(_) => {},
                         None => {},
