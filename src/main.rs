@@ -290,7 +290,7 @@ impl Func {
     }*/
     pub fn tokens(&self) -> Vec<String> {
         let mut next = "".to_string();
-        let mut tokens: Vec<&str> = Vec::<String>::new();
+        let mut tokens: Vec<String> = Vec::<String>::new();
         let mut parentheses_counter: isize = 0;
         for char in self.code.chars() {
             match char {
@@ -301,20 +301,19 @@ impl Func {
                             next = "".to_string();
                         }
                     } else {
-                        let x = (next.to_owned() + char.to_string().as_str()).as_str();
-                        next = (next.to_owned() + char.to_string().as_str());
+                        next = next.to_owned() + char.to_string().as_str();
                     }
                 }
                 '(' => {
                     parentheses_counter+=1;
-                    next = (next.to_owned() + char.to_string().as_str());
+                    next = next.to_owned() + char.to_string().as_str();
                 }
                 ')' => {
                     parentheses_counter-=1;
-                    next = (next.to_owned() + char.to_string().as_str());
+                    next = next.to_owned() + char.to_string().as_str();
                 }
                 _ => {
-                    next = (next.to_owned() + char.to_string().as_str());
+                    next = next.to_owned() + char.to_string().as_str();
                 }
             }
         }
@@ -516,7 +515,7 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
         if token.chars().all(char::is_numeric) {
             stack.push(Val::Frac(Frac::new_int(i128::from_str_radix(token, 10).expect("Some number"))));
         } else {
-            match *token {
+            match (*token).as_str() {
                 //"" => {},
                 "x" => {stack.pop();}, // Delete
                 "+" => {
