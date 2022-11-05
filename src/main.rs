@@ -635,9 +635,47 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
                         None => {},
                     }
                 },
-                "do_on" => {
+                "do_on" | "`" => {
                     let f = stack.pop();
                     let s = stack.pop();
+                    match f {
+                        Some(Val::Func(func)) => {
+                            match s {
+                                Some(Val::Stack(mut other_stack)) => {
+                                    stack.push(Val::Stack(eval(&func.code, data, &mut other_stack)?));
+                                },
+                                Some(_) => {},
+                                None => {}
+                            }
+                        },
+                        Some(_) => {},
+                        None => {},
+                    }
+                },
+                "pop" => {
+                    let s = stack.pop();
+                    match s {
+                        Some(Val::Stack(other_stack)) => {
+                            let v = other_stack.clone().pop();
+                            stack.push(v.ok_or("Cannot pop empty stack!")?);
+                        },
+                        Some(_) => {None.ok_or("Cannot pop from non-stack!")?;},
+                        None => {None.ok_or("No stack to pop from!")?;}
+                    }
+                },
+                "size" => { // Stack only
+                    let v = stack.pop();
+                    match v {
+                        Some(Val::Stack(s)) => {
+                            let x = s.data.len().try_into();
+                            match x {
+                                Ok(ok) => {stack.push(Val::Frac(Frac::new_int(ok)));},
+                                Err(_) => {None.ok_or("Number conversion error in size test")?;}
+                            }
+                        },
+                        Some(_) => {None.ok_or("You can only check the size of stacks.")?;},
+                        None => {None.ok_or("Nothing to measure")?;}
+                    }
                 },
                 _ => {
                     if token.substring(0, 1) == "<" { // load var
@@ -693,8 +731,20 @@ fn main() {
             let mut stack = Stack::new();
             let r = eval(&last_line, &mut data, &mut stack);
             match r {
-                Ok(ok) => {println!("{}", ok);},
-                Err(e) => {println!("ERROR: {}", e);}
+                Ok(o) => {
+                    match o.top() {
+                        Some(v) => {
+                            data.insert("".to_string(), v.clone());
+                            println!("{}", v);
+                        }
+                        None => {
+                            println!("Nothing to print left on the stack");
+                        }
+                    }
+                },
+                Err(e) => {
+                    println!("ERROR: {}", e);
+                }
             }
         } else {
             let mut s: Stack = Stack::new();
@@ -712,7 +762,7 @@ fn main() {
                     }
                 },
                 Err(e) => {
-                    println!("Something went wrong: {}", e);
+                    println!("ERROR: {}", e);
                 }
             }
             last_line = code;
