@@ -185,8 +185,40 @@ impl fmt::Display for Frac {
     }
 }
 
+#[derive(Clone)]
 pub struct Stack {
     pub data: LinkedList<Val>,
+}
+
+impl Stack {
+    pub fn push(&mut self, v: Val) {
+        self.data.push_front(v);
+    }
+    pub fn pop(&mut self) -> Option<Val> {
+        self.data.pop_front()
+    }
+    pub fn len(&self) -> Val {
+        Val::Frac(Frac::new_int((self.data.len()) as i128))
+    }
+    pub fn new() -> Self {
+        Self {
+            data : LinkedList::<Val>::new()
+        }
+    }
+}
+
+impl ops::Add<Stack> for Stack {
+    type Output = Stack;
+    fn add(self, _rhs: Stack) -> Stack {
+        let mut r = Stack::new();
+        for e in self.data {
+            r.push(e);
+        }
+        for e in _rhs.data {
+            r.push(e);
+        }
+        return r;
+    }
 }
 
 impl fmt::Display for Stack {
@@ -200,15 +232,104 @@ impl fmt::Display for Stack {
     }
 }
 
+#[derive(Clone)]
 pub struct Func {
     pub code: String,
 }
 
+impl Func {
+    pub fn new(code: String) -> Self {
+        Func {
+            code,
+        }
+    }
+    pub fn do_nothing() -> Self {
+        Func {
+            code:"".to_string(),
+        }
+    }
+    pub fn append_tokens(&self, tokens: &mut LinkedList<String>) {
+        let mut next: String = "".to_string();
+        let mut new_tokens: LinkedList<String> = LinkedList::<String>::new(); // We're going to put tokens here to ensure they don't end up in the wrong order.
+        let mut parentheses_counter: isize = 0;
+        for char in self.code.chars() {
+            match char {
+                ' ' | '\t' | '\r' => {
+                    if parentheses_counter == 0 {
+                        if next != "" {new_tokens.push_front(next);}
+                        next = "".to_string();
+                    } else {
+                        let mut b = [0; 4];
+                        next+=char.encode_utf8(&mut b);
+                    }
+                }
+                '(' => { parentheses_counter+=1; let mut b = [0; 4]; next+=char.encode_utf8(&mut b); }
+                ')' => { parentheses_counter-=1; let mut b = [0; 4]; next+=char.encode_utf8(&mut b); }
+                _ => {
+                    let mut b = [0; 4];
+                    next+=char.encode_utf8(&mut b);
+                }
+            }
+        }
+        for t in new_tokens {
+            tokens.push_front(t);
+        }
+    }
+}
+
+impl ops::Add<Func> for Func {
+    type Output = Func;
+    fn add(self, _rhs: Func) -> Func {
+        Func {
+            code: format!("{} {}", self.code, _rhs.code).to_string(),
+        }
+    }
+}
+
+impl ops::Add<&Func> for Func {
+    type Output = Func;
+    fn add(self, _rhs: &Func) -> Func {
+        Func {
+            code: format!("{} {}", self.code, _rhs.code).to_string(),
+        }
+    }
+}
+
+impl ops::Mul<Frac> for Func {
+    type Output = Func;
+    fn mul(self, _rhs: Frac) -> Func {
+        let mut r = Func::new("".to_string());
+        for _i in 0.._rhs.int() {
+            r = r + &self;
+        }
+        return r;
+    }
+}
+
+#[derive(Clone)]
 pub enum Val {
     Frac(Frac),
     Stack(Stack),
     Func(Func),
 }
+
+/*impl Copy for Val {}
+
+impl Clone for Val {
+    fn clone(&self) -> Val {
+        match self {
+            Val::Frac(f) => {Val::Frac(f.clone())},
+            Val::Stack(s) => {
+                let r: Stack = Stack::new();
+                for v in &s.data {
+                    r.push(v.clone());
+                }
+                return Val::Stack(r);
+            },
+            Val::Func(f) => {Val::Func(Func::new(f.code))}
+        }
+    }
+}*/
 
 impl fmt::Display for Val {
     fn fmt(&self, fo: &mut fmt::Formatter) -> fmt::Result {
@@ -220,55 +341,181 @@ impl fmt::Display for Val {
     }
 }
 
-fn eval(code: &String, data: &mut HashMap<String, Frac>) -> Result<Val, String> {
+impl ops::Add<Val> for Val {
+    type Output = Option<Val>;
+    fn add(self, _rhs: Val) -> Option<Val> {
+        match self {
+            Val::Frac(frac0) => {
+                match _rhs {
+                    Val::Frac(frac1) => {Some(Val::Frac(frac0 + frac1))},
+                    Val::Stack(_stack1) => {None},
+                    Val::Func(_func1) => {None}
+                }
+            },
+            Val::Stack(stack0) => {
+                match _rhs {
+                    Val::Frac(_frac1) => {None},
+                    Val::Stack(stack1) => {Some(Val::Stack(stack0 + stack1))},
+                    Val::Func(_func1) => {None}
+                }
+            },
+            Val::Func(func0) => {
+                match _rhs {
+                    Val::Frac(_frac1) => {None},
+                    Val::Stack(_stack1) => {None},
+                    Val::Func(func1) => {Some(Val::Func(func0 + func1))}
+                }
+            }
+        }
+    }
+}
+
+impl ops::Sub<Val> for Val {
+    type Output = Option<Val>;
+    fn sub(self, _rhs: Val) -> Option<Val> {
+        match self {
+            Val::Frac(frac0) => {
+                match _rhs {
+                    Val::Frac(frac1) => {Some(Val::Frac(frac0 - frac1))},
+                    Val::Stack(_stack1) => {None},
+                    Val::Func(_func1) => {None}
+                }
+            },
+            Val::Stack(_stack0) => {
+                match _rhs {
+                    Val::Frac(_frac1) => {None},
+                    Val::Stack(_stack1) => {None},
+                    Val::Func(_func1) => {None}
+                }
+            },
+            Val::Func(_func0) => {
+                match _rhs {
+                    Val::Frac(_frac1) => {None},
+                    Val::Stack(_stack1) => {None},
+                    Val::Func(_func1) => {None}
+                }
+            }
+        }
+    }
+}
+
+impl ops::Mul<Val> for Val {
+    type Output = Option<Val>;
+    fn mul(self, _rhs: Val) -> Option<Val> {
+        match self {
+            Val::Frac(frac0) => {
+                match _rhs {
+                    Val::Frac(frac1) => {Some(Val::Frac(frac0 * frac1))},
+                    Val::Stack(_stack1) => {None},
+                    Val::Func(func1) => {Some(Val::Func(func1 * frac0))}
+                }
+            },
+            Val::Stack(_stack0) => {
+                match _rhs {
+                    Val::Frac(_frac1) => {None},
+                    Val::Stack(_stack1) => {None},
+                    Val::Func(_func1) => {None}
+                }
+            },
+            Val::Func(func0) => {
+                match _rhs {
+                    Val::Frac(frac1) => {Some(Val::Func(func0 * frac1))},
+                    Val::Stack(_stack1) => {None},
+                    Val::Func(_func1) => {None}
+                }
+            }
+        }
+    }
+}
+
+impl ops::Div<Val> for Val {
+    type Output = Option<Val>;
+    fn div(self, _rhs: Val) -> Option<Val> {
+        match self {
+            Val::Frac(frac0) => {
+                match _rhs {
+                    Val::Frac(frac1) => {Some(Val::Frac(frac0 / frac1))},
+                    Val::Stack(_stack1) => {None},
+                    Val::Func(_func1) => {None}
+                }
+            },
+            Val::Stack(_stack0) => {
+                match _rhs {
+                    Val::Frac(_frac1) => {None},
+                    Val::Stack(_stack1) => {None},
+                    Val::Func(_func1) => {None}
+                }
+            },
+            Val::Func(_func0) => {
+                match _rhs {
+                    Val::Frac(_frac1) => {None},
+                    Val::Stack(_stack1) => {None},
+                    Val::Func(_func1) => {None}
+                }
+            }
+        }
+    }
+}
+
+fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Result<Val, String> {
     //if code.to_string() == "clear" { return Ok("\x1b[1;1H\x1b[2J\x1b[33mScreen Cleared\x1b[0m".to_string()); }
     //if code.to_string() == "" || code.to_string() == "help" { return Ok("Type numbers to push them to the stack, and type opperators to perform them on elements on the stack.\n\tEX:\t2 2 +\n\t\t4".to_string()); }
     let binding = code.to_string().trim().to_string();
     let mut tokens: Vec<&str> = binding.split(&[' ','\t','\n'][..]).collect();
     tokens = tokens.iter().filter(|&&token| token != "").cloned().collect();
-    let mut stack: LinkedList<Frac> = LinkedList::<Frac>::new();
+    //let mut stack: LinkedList<Frac> = LinkedList::<Frac>::new();
     for token in &tokens {
         if token.chars().all(char::is_numeric) {
-            stack.push_front(Frac::new_int(i128::from_str_radix(token, 10).expect("Some number")));
+            stack.push(Val::Frac(Frac::new_int(i128::from_str_radix(token, 10).expect("Some number"))));
         } else {
             match *token {
                 //"" => {},
-                "x" => {stack.pop_front();}, // Delete
+                "x" => {stack.pop();}, // Delete
                 "+" => {
-                    let n1 = stack.pop_front().ok_or("Second number in addition missing");
-                    let n0 = stack.pop_front().ok_or("First number in addition missing");
-                    stack.push_front(n0? + n1?);
+                    let n1 = stack.pop().ok_or("Second number in addition missing");
+                    let n0 = stack.pop().ok_or("First number in addition missing");
+                    stack.push((n0? + n1?).ok_or("Addition cannot be performed on provided types")?);
                 }, // Add
                 "-" => {
-                    let n1 = stack.pop_front().ok_or("Second number in subtraction missing");
-                    let n0 = stack.pop_front().ok_or("Firts number in subtraction missing");
-                    stack.push_front(n0? - n1?);
+                    let n1 = stack.pop().ok_or("Second number in subtraction missing");
+                    let n0 = stack.pop().ok_or("Firts number in subtraction missing");
+                    stack.push((n0? - n1?).ok_or("Subtraction cannot be performed on provided types")?);
                 }, // Subtract
                 "*" => {
-                    let n1 = stack.pop_front().ok_or("Second number in multiplication missing");
-                    let n0 = stack.pop_front().ok_or("First number in multiplication missing");
-                    stack.push_front(n0? * n1?);
+                    let n1 = stack.pop().ok_or("Second number in multiplication missing");
+                    let n0 = stack.pop().ok_or("First number in multiplication missing");
+                    stack.push((n0? * n1?).ok_or("Multiplication cannot be performed on provided types")?);
                 }, // Multipluy
                 "/" => {
-                    let n1 = stack.pop_front().ok_or("Second number in division missing");
-                    let n0 = stack.pop_front().ok_or("First number in division missing");
-                    stack.push_front(n0? / n1?);
+                    let n1 = stack.pop().ok_or("Second number in division missing");
+                    let n0 = stack.pop().ok_or("First number in division missing");
+                    stack.push((n0? / n1?).ok_or("Division cannot be performed on provided types")?);
                 }, // Divide
                 ":" => {
-                    let n = stack.pop_front().ok_or("Nothing to duplicate");
-                    stack.push_front(n?);
-                    stack.push_front(n?);
+                    let n = stack.pop().ok_or("Nothing to duplicate");
+                    stack.push(n.clone()?);
+                    stack.push(n?);
                 }, // Duplicate
                 "." => {
-                    let n = stack.pop_front().ok_or("No number of elements to push back through provided");
-                    let e = stack.pop_front().ok_or("Nothing to push backwards");
-                    let mut rest: LinkedList<Frac> = LinkedList::<Frac>::new();
-                    for _i in 0..n?.int() {
-                        rest.push_front(stack.pop_front().ok_or("Not enough space to push back that far")?);
+                    let n = stack.pop().ok_or("No number of elements to push back through provided");
+                    let e = stack.pop().ok_or("Nothing to push backwards");
+                    let mut rest: Stack = Stack::new();
+                    match n? {
+                        Val::Frac(f) => {
+                            for _i in 0..f.int() {
+                                rest.push(stack.pop().ok_or("Not enough space to push back that far")?);
+                            }
+                        },
+                        Val::Stack(_s) => {
+                            None.ok_or("Stacks are not numbers. How can I push back through [stack] elements?")?;
+                        },
+                        Val::Func(_s) => {
+                            None.ok_or("Functions are not numbers. How can I push back through [function] elements?")?;
+                        }
                     }
-                    stack.push_front(e?);
-                    for r in rest {
-                        stack.push_front(r);
+                    stack.push(e?);
+                    for r in rest.data {
+                        stack.push(r);
                     }
                     //stack.append(&mut rest);
                 }, // Push backwards
@@ -278,13 +525,13 @@ fn eval(code: &String, data: &mut HashMap<String, Frac>) -> Result<Val, String> 
                         //println!("Load var {}", var_name);
                         let v = data.get(var_name).ok_or("Load a variable from the data");
                         match v {
-                            Ok(d) => {stack.push_front(*d);},
-                            Err(_e) => {stack.push_front(Frac::new_int(0));}
+                            Ok(d) => {stack.push(d.clone());},
+                            Err(_e) => {stack.push(Val::Frac(Frac::new_int(0)));}
                         }
                     } else if token.substring(0, 1) == ">" { // set var 
                         let var_name = token.substring(1, token.len());
                         //println!("Save var {}", var_name);
-                        let v = stack.pop_front().ok_or("Number to save to variable");
+                        let v = stack.pop().ok_or("Number to save to variable");
                         match v {
                             Ok(d) => {data.insert(var_name.to_string(), d);},
                             Err(_e) => {}
@@ -296,21 +543,21 @@ fn eval(code: &String, data: &mut HashMap<String, Frac>) -> Result<Val, String> 
             }
         }
     }
-    match stack.pop_front() {
+    match stack.pop() {
         Some(v) => {
-            data.insert("".to_string(), v);
-            return Ok(Val::Frac(v));
+            data.insert("".to_string(), v.clone());
+            return Ok(v);
         }
         None => {return Err("Nothing to print left on the stack".to_string());}
     }
-    //Ok(stack.pop_front().ok_or("Nothing to print left on stack").to_string())
+    //Ok(stack.pop().ok_or("Nothing to print left on stack").to_string())
 }
 
 fn main() {
     println!("Stackulator: The Stack-Based Calculator");
     let mut code: String;
-    let mut data: HashMap<String, Frac> = HashMap::<String, Frac>::new();
-    data.insert("".to_string(), Frac::new_int(0));
+    let mut data: HashMap<String, Val> = HashMap::<String, Val>::new();
+    data.insert("".to_string(), Val::Frac(Frac::new_int(0)));
     let mut last_line: String = "help".to_string();
     while last_line != "quit" && last_line != "exit" && last_line != "stop" {
         code = String::new();    // Clear out any old commands
@@ -320,15 +567,17 @@ fn main() {
             println!("Bye :)");
             last_line = code;
         } else if code == "" {
-            let r = eval(&last_line, &mut data);
+            let mut stack = Stack::new();
+            let r = eval(&last_line, &mut data, &mut stack);
             match r {
-                Ok(ok) => {println!("{}", ok);}
+                Ok(ok) => {println!("{}", ok);},
                 Err(e) => {println!("ERROR: {}", e);}
             }
         } else {
-            let r = eval(&code, &mut data);
+            let mut s: Stack = Stack::new();
+            let r = eval(&code, &mut data, &mut s);
             match r {
-                Ok(ok) => {println!("{}", ok);}
+                Ok(ok) => {println!("{}", ok);},
                 Err(e) => {println!("ERROR: {}", e);}
             }
             last_line = code;
