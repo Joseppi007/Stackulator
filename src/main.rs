@@ -3,6 +3,9 @@ use std::fmt;
 use std::collections::{LinkedList, HashMap};
 use std::ops;
 use substring::Substring;
+//use std::fmt::Write;
+//use std::rc::Rc;
+//use std::cell::RefCell;
 
 fn min(x: i128, y: i128) -> i128 {
     if x < y {
@@ -242,38 +245,84 @@ impl Func {
         Func {
             code,
         }
-    }
-    pub fn do_nothing() -> Self {
-        Func {
-            code:"".to_string(),
-        }
-    }
-    pub fn append_tokens(&self, tokens: &mut LinkedList<String>) {
-        let mut next: String = "".to_string();
+    } 
+    /*pub fn append_tokens<'a>(&'a self, tokens: &mut LinkedList<&'a str>) -> Result<LinkedList<&str>, &str> {
+        //let mut next = String::new();
         let mut new_tokens: LinkedList<String> = LinkedList::<String>::new(); // We're going to put tokens here to ensure they don't end up in the wrong order.
+        new_tokens.push_front("".to_string());
         let mut parentheses_counter: isize = 0;
         for char in self.code.chars() {
             match char {
                 ' ' | '\t' | '\r' => {
                     if parentheses_counter == 0 {
-                        if next != "" {new_tokens.push_front(next);}
-                        next = "".to_string();
+                        if new_tokens.front().ok_or("Turning the text into code went whack")?.len() != 0 {
+                            //let x = next.clone();
+                            //let y: String;
+                            //next.clone();
+                            //let mut o = "".to_string();
+                            //write!(&mut o, "{}", next);
+                            new_tokens.push_front("".to_string());
+                        }
+                        //next = String::new();
                     } else {
-                        let mut b = [0; 4];
-                        next+=char.encode_utf8(&mut b);
+                        write!(&mut new_tokens.front().ok_or("Turning the text into code went whack")?, "{}", char);
+                        //write!(&mut next, "{}", char);
+                        //let x = format!("{}{}", next, char);
+                        //next=x.as_str();
                     }
                 }
-                '(' => { parentheses_counter+=1; let mut b = [0; 4]; next+=char.encode_utf8(&mut b); }
-                ')' => { parentheses_counter-=1; let mut b = [0; 4]; next+=char.encode_utf8(&mut b); }
+                '(' => { parentheses_counter+=1; write!(&mut new_tokens.front().ok_or("Turning the text into code went whack")?, "{}", char); /*write!(&mut next, "{}", char);*/ }
+                ')' => { parentheses_counter-=1; write!(&mut new_tokens.front().ok_or("Turning the text into code went whack")?, "{}", char); /*write!(&mut next, "{}", char);*/ }
                 _ => {
-                    let mut b = [0; 4];
-                    next+=char.encode_utf8(&mut b);
+                    write!(&mut new_tokens.front().ok_or("Turning the text into code went whack")?, "{}", char);
+                    //write!(&mut next, "{}", char);
                 }
             }
         }
-        for t in new_tokens {
-            tokens.push_front(t);
+        let mut ret = LinkedList::<&str>::new();
+        for t in tokens {
+            ret.push_front(t);
         }
+        for t in new_tokens {
+            ret.push_front(&t);
+        }
+        Ok(ret)
+    }*/
+    pub fn tokens(&self) -> Vec<&str> {
+        let mut next = "";
+        let mut tokens: Vec<&str> = Vec::<&str>::new();
+        let mut parentheses_counter: isize = 0;
+        for char in self.code.chars() {
+            match char {
+                ' ' | '\t' | '\r' => {
+                    if parentheses_counter == 0 {
+                        if next != "" {
+                            tokens.push(next);
+                            let x = "";
+                            next = x;
+                        }
+                    } else {
+                        let x = (next.to_owned() + char.to_string().as_str()).as_str();
+                        next = x;
+                    }
+                }
+                '(' => {
+                    parentheses_counter+=1;
+                    let x = (next.to_owned() + char.to_string().as_str()).as_str();
+                    next = x;
+                }
+                ')' => {
+                    parentheses_counter-=1;
+                    let x = (next.to_owned() + char.to_string().as_str()).as_str();
+                    next = x;
+                }
+                _ => {
+                    let x = (next.to_owned() + char.to_string().as_str()).as_str();
+                    next = x;
+                }
+            }
+        }
+        tokens
     }
 }
 
@@ -460,9 +509,12 @@ impl ops::Div<Val> for Val {
 fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Result<Val, String> {
     //if code.to_string() == "clear" { return Ok("\x1b[1;1H\x1b[2J\x1b[33mScreen Cleared\x1b[0m".to_string()); }
     //if code.to_string() == "" || code.to_string() == "help" { return Ok("Type numbers to push them to the stack, and type opperators to perform them on elements on the stack.\n\tEX:\t2 2 +\n\t\t4".to_string()); }
-    let binding = code.to_string().trim().to_string();
-    let mut tokens: Vec<&str> = binding.split(&[' ','\t','\n'][..]).collect();
-    tokens = tokens.iter().filter(|&&token| token != "").cloned().collect();
+    //let binding = code.to_string().trim().to_string();
+    //let mut tokens: Vec<&str> = binding.split(&[' ','\t','\n'][..]).collect();
+    //let mut tokens: LinkedList<&str> = LinkedList::<&str>::new();
+    let main_func: Func = Func::new(code.to_string());
+    let mut tokens = main_func.tokens();
+    tokens = tokens.iter().filter(|&token| token.to_string().as_str() != "").cloned().collect();
     //let mut stack: LinkedList<Frac> = LinkedList::<Frac>::new();
     for token in &tokens {
         if token.chars().all(char::is_numeric) {
@@ -519,6 +571,9 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
                     }
                     //stack.append(&mut rest);
                 }, // Push backwards
+                "[]" => {
+                    stack.push(Val::Stack(Stack::new()));
+                },
                 _ => {
                     if token.substring(0, 1) == "<" { // load var
                         let var_name = token.substring(1, token.len());
@@ -536,6 +591,8 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
                             Ok(d) => {data.insert(var_name.to_string(), d);},
                             Err(_e) => {}
                         }
+                    } else if token.substring(0, 1) == "(" && token.substring(token.len()-1, token.len()) == ")" {
+                        stack.push(Val::Func(Func::new(token.substring(1, token.len()-1).to_string())));
                     } else {
                         println!("{} is not a valid token", token);
                     }
