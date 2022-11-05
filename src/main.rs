@@ -54,7 +54,7 @@ fn gcd(x: i128, y: i128) -> i128 {
     return last_g;
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct Frac {
     pub num: i128,
     pub denom: i128
@@ -188,7 +188,7 @@ impl fmt::Display for Frac {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Stack {
     pub data: LinkedList<Val>,
 }
@@ -241,7 +241,7 @@ impl fmt::Display for Stack {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Func {
     pub code: String,
 }
@@ -367,7 +367,7 @@ impl fmt::Display for Func {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Val {
     Frac(Frac),
     Stack(Stack),
@@ -675,6 +675,15 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
                         },
                         Some(_) => {None.ok_or("You can only check the size of stacks.")?;},
                         None => {None.ok_or("Nothing to measure")?;}
+                    }
+                },
+                "=" | "==" => {
+                    let a = stack.pop().ok_or("You need to have two things to make a comparison")?;
+                    let b = stack.pop().ok_or("You need to have two things to make a comparison")?;
+                    if a == b {
+                        stack.push(Val::Frac(Frac::new_int(1)));
+                    } else {
+                        stack.push(Val::Frac(Frac::new_int(0)));
                     }
                 },
                 _ => {
