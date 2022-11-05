@@ -317,6 +317,11 @@ impl Func {
                 }
             }
         }
+        if parentheses_counter == 0 {
+            if next != "" {
+                tokens.push(next);
+            }
+        }
         tokens
     }
 }
