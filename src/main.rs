@@ -695,7 +695,9 @@ fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -> Re
                     let s = stack.pop();
                     match s {
                         Some(Val::Stack(other_stack)) => {
-                            let v = other_stack.clone().pop();
+                            let mut other_stack_copy = other_stack.clone();
+                            let v = other_stack_copy.pop();
+                            stack.push(Val::Stack(other_stack_copy));
                             stack.push(v.ok_or("Cannot pop empty stack!")?);
                         },
                         Some(_) => {None.ok_or("Cannot pop from non-stack!")?;},
