@@ -981,7 +981,7 @@ pub fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -
                     match (start, end, step) {
                         (Some(Val::Frac(start)), Some(Val::Frac(end)), Some(Val::Frac(step))) => {
                             let mut x = start;
-                            while x < end {
+                            while ( x < end && step > Frac::new_int(0) ) || ( x > end && step < Frac::new_int(0) ) {
                                 new_stack.push(Val::Frac(x));
                                 x = x + step;
                             }
