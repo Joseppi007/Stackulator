@@ -192,6 +192,20 @@ impl ops::Div<Frac> for Frac {
     }
 }
 
+impl ops::Rem<Frac> for Frac {
+    type Output = Frac;
+    fn rem(self, _rhs: Frac) -> Frac {
+        let mut r = self.clone();
+        while r > _rhs {
+            r = r - _rhs;
+        }
+        while r < Frac::new_int(0) {
+            r = r + _rhs
+        }
+        return r;
+    }
+}
+
 impl fmt::Display for Frac {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.denom == 1 {
@@ -546,6 +560,35 @@ impl ops::Div<Val> for Val {
     }
 }
 
+impl ops::Rem<Val> for Val {
+    type Output = Option<Val>;
+    fn rem(self, _rhs: Val) -> Option<Val> {
+        match self {
+            Val::Frac(frac0) => {
+                match _rhs {
+                    Val::Frac(frac1) => {Some(Val::Frac(frac0 % frac1))},
+                    Val::Stack(_stack1) => {None},
+                    Val::Func(_func1) => {None}
+                }
+            },
+            Val::Stack(_stack0) => {
+                match _rhs {
+                    Val::Frac(_frac1) => {None},
+                    Val::Stack(_stack1) => {None},
+                    Val::Func(_func1) => {None}
+                }
+            },
+            Val::Func(_func0) => {
+                match _rhs {
+                    Val::Frac(_frac1) => {None},
+                    Val::Stack(_stack1) => {None},
+                    Val::Func(_func1) => {None}
+                }
+            }
+        }
+    }
+}
+
 impl Val {
     pub fn as_bool(&self) -> bool {
         match self {
@@ -605,6 +648,11 @@ pub fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -
                     let n0 = stack.pop().ok_or("First number in division missing");
                     stack.push((n0? / n1?).ok_or("Division cannot be performed on provided types")?);
                 }, // Divide
+                "%" => {
+                    let n1 = stack.pop().ok_or("Second number in division missing");
+                    let n0 = stack.pop().ok_or("First number in division missing");
+                    stack.push((n0? % n1?).ok_or("Division cannot be performed on provided types")?); 
+                }, // Modulo
                 ":" => {
                     let n = stack.pop().ok_or("Nothing to duplicate");
                     stack.push(n.clone()?);
@@ -712,6 +760,19 @@ pub fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -
                         },
                         Some(_) => {None.ok_or("Cannot pop from non-stack!")?;},
                         None => {None.ok_or("No stack to pop from!")?;}
+                    }
+                },
+                "push" => {
+                    let v = stack.pop().ok_or("Nothing to push")?;
+                    let s = stack.pop();
+                    match s {
+                        Some(Val::Stack(other_stack)) => {
+                            let mut other_stack_copy = other_stack.clone();
+                            other_stack_copy.push(v);
+                            stack.push(Val::Stack(other_stack_copy));
+                        },
+                        Some(_) => {None.ok_or("Cannot pust to non-stack!")?;},
+                        None => {None.ok_or("No stack to push to!")?;}
                     }
                 },
                 "size" => { // Stack only
@@ -906,6 +967,9 @@ pub fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -
                         _ => { None.ok_or("Impropper formatting :|")?; }
                     }
                 },
+                ".." | "range" => {
+                    
+                }
                 _ => {
                     if token.substring(0, 2) == "<<" { // load var
                         let var_name = token.substring(2, token.len());
