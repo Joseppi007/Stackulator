@@ -256,6 +256,12 @@ impl Stack {
             data : LinkedList::<Val>::new()
         }
     }
+    pub fn rev(&self) -> Stack {
+        let a = self.clone();
+        let mut b = Stack::new();
+        for x in a.data { b.push(x); }
+        return b;
+    }
 }
 
 impl ops::Add<Stack> for Stack {
@@ -967,9 +973,37 @@ pub fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -
                         _ => { None.ok_or("Impropper formatting :|")?; }
                     }
                 },
-                ".." | "range" => {
+                ".." | "range" => { // start end inc ..
+                    let step = stack.pop();
+                    let end = stack.pop();
+                    let start = stack.pop();
+                    let mut new_stack = Stack::new();
+                    match (start, end, step) {
+                        (Some(Val::Frac(start)), Some(Val::Frac(end)), Some(Val::Frac(step))) => {
+                            let mut x = start;
+                            while x < end {
+                                new_stack.push(Val::Frac(x));
+                                x = x + step;
+                            }
+                            stack.push(Val::Stack(new_stack.rev()));
+                        },
+                        (_, _, _) => {None.ok_or("Range is formatted:\tstart end inc ..")?;}
+                    } 
+                },
+                "for" => { // for each // stack function for
                     
-                }
+                },
+                "rev" => {
+                    let x = stack.pop();
+                    match x {
+                        Some(Val::Frac(_)) => {None.ok_or("Fractions aren't reversable.")?;},
+                        Some(Val::Stack(s)) => {
+                            stack.push(Val::Stack(s.rev()));
+                        },
+                        Some(Val::Func(_)) => {None.ok_or("I don't want to let you reverse functions.")?;},
+                        None=> {None.ok_or("You can't reverse nothing!")?;}
+                    }
+                },
                 _ => {
                     if token.substring(0, 2) == "<<" { // load var
                         let var_name = token.substring(2, token.len());
