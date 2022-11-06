@@ -274,7 +274,7 @@ impl ops::Add<Stack> for Stack {
         for e in _rhs.data {
             r.push(e);
         }
-        return r;
+        return r.rev();
     }
 }
 
