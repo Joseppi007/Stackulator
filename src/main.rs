@@ -1009,7 +1009,7 @@ pub fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -
                         (_, _) => { None.ok_or("For formatted incorrectly")?; },
                     }
                 },
-                "map" => { // for each -- opperates on a new stack // stack function for
+                "map" => { // for each -- opperates on a new stack // stack function map
                     let f = stack.pop().ok_or("Missing function")?;
                     let s = stack.pop().ok_or("Missing stack")?.clone();
                     let mut new_stack = Stack::new();
@@ -1028,6 +1028,33 @@ pub fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -
                             stack.push(Val::Stack(new_stack.rev()));
                         },
                         (_, _) => {
+                            None.ok_or("For formatted incorrectly")?;
+                            stack.push(Val::Stack(Stack::new()));
+                        },
+                    }
+                },
+                "merge" => { // map, but with two stacks // stack stack func merge
+                    let f = stack.pop().ok_or("Missing function")?;
+                    let s1 = stack.pop().ok_or("Missing stack one")?.clone();
+                    let s0 = stack.pop().ok_or("Missing stack zero")?.clone();
+                    let mut new_stack = Stack::new();
+                    match (f, s0, s1) {
+                        (Val::Func(func), Val::Stack(mut old_stack_a), Val::Stack(mut old_stack_b)) => { 
+                            loop {
+                                let va = old_stack_a.pop();
+                                let vb = old_stack_b.pop();
+                                match (va, vb) {
+                                    (Some(value_a), Some(value_b)) => {
+                                        new_stack.push(value_a);
+                                        new_stack.push(value_b);
+                                        (data, new_stack) = eval(&func.code, data.clone(), new_stack.clone())?;
+                                    },
+                                    (_, _) => { break; }
+                                }
+                            }
+                            stack.push(Val::Stack(new_stack.rev()));
+                        },
+                        (_, _, _) => {
                             None.ok_or("For formatted incorrectly")?;
                             stack.push(Val::Stack(Stack::new()));
                         },
