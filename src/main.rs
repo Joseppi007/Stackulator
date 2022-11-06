@@ -3,6 +3,7 @@ use std::fmt;
 use std::collections::{LinkedList, HashMap};
 use std::ops;
 use substring::Substring;
+use rand::Rng;
 //use std::fmt::Write;
 //use std::rc::Rc;
 //use std::cell::RefCell;
@@ -885,7 +886,16 @@ fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -> Re
                     }
                 },
                 "rand" | "?" => { // lower upper rand
-                    
+                    let b = stack.pop().ok_or("Missing an argument in and")?;
+                    let a = stack.pop().ok_or("Missing an argument in and")?;
+                    match (a, b) {
+                        (Val::Frac(x), Val::Frac(y)) => {
+                            let mut rnd = rand::thread_rng();
+                            let r = rnd.gen_range(x.int()..y.int());
+                            stack.push(Val::Frac(Frac::new_int(r)));
+                        },
+                        _ => { None.ok_or("Impropper formatting :|")?; }
+                    }
                 },
                 _ => {
                     if token.substring(0, 2) == "<<" { // load var
@@ -906,6 +916,22 @@ fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -> Re
                         }
                     } else if token.substring(0, 1) == "(" && token.substring(token.len()-1, token.len()) == ")" {
                         stack.push(Val::Func(Func::new(token.substring(1, token.len()-1).to_string())));
+                    } else if data.contains_key(&token.to_string()) {
+                        match data.get(&token.to_string()) {
+                            Some(Val::Frac(frac)) => { 
+                                stack.push(Val::Frac(*frac));
+                            },
+                            Some(Val::Stack(other_stack)) => { 
+                                stack.push(Val::Stack(other_stack.clone()));
+                            },
+                            Some(Val::Func(func)) => {
+                                stack.push(Val::Func(func.clone()));
+                                tokens.push("do".to_string());
+                            },
+                            None => {
+                                None.ok_or("The token is both in and not in the vars? This shouldn't be possible.")?;
+                            }
+                        }
                     } else {
                         println!("{} is not a valid token", token);
                     }
