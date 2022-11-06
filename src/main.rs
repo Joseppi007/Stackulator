@@ -1,9 +1,11 @@
-use std::io;
+//use std::io;
 use std::fmt;
 use std::collections::{LinkedList, HashMap};
 use std::ops;
 use substring::Substring;
 use rand::Rng;
+use std::fs;
+use rustyline;
 //use std::fmt::Write;
 //use std::rc::Rc;
 //use std::cell::RefCell;
@@ -326,7 +328,7 @@ impl Func {
         let mut parentheses_counter: isize = 0;
         for char in self.code.chars() {
             match char {
-                ' ' | '\t' | '\r' => {
+                ' ' | '\t' | '\n' => {
                     if parentheses_counter == 0 {
                         if next != "" {
                             tokens.push(next);
@@ -554,7 +556,14 @@ impl Val {
     }
 }
 
-fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -> Result<(HashMap<String, Val>, Stack), String> {
+pub fn eval_file(file: &str, data_copy: HashMap<String, Val>, stack_copy: Stack) -> Result<(HashMap<String, Val>, Stack), String> {
+    match fs::read_to_string(file) {
+        Ok(code) => { eval(&code, data_copy, stack_copy) },
+        Err(_) => { None.ok_or("File does not exist")? }
+    }
+}
+
+pub fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -> Result<(HashMap<String, Val>, Stack), String> {
     //if code.to_string() == "clear" { return Ok("\x1b[1;1H\x1b[2J\x1b[33mScreen Cleared\x1b[0m".to_string()); }
     //if code.to_string() == "" || code.to_string() == "help" { return Ok("Type numbers to push them to the stack, and type opperators to perform them on elements on the stack.\n\tEX:\t2 2 +\n\t\t4".to_string()); }
     //let binding = code.to_string().trim().to_string();
@@ -916,6 +925,8 @@ fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -> Re
                         }
                     } else if token.substring(0, 1) == "(" && token.substring(token.len()-1, token.len()) == ")" {
                         stack.push(Val::Func(Func::new(token.substring(1, token.len()-1).to_string())));
+                    } else if token.substring(0, 1) == "{" && token.substring(token.len()-1, token.len()) == "}" {
+                        (data, stack) = eval_file(token.substring(1, token.len()-1), data.clone(), stack.clone())?;
                     } else if data.contains_key(&token.to_string()) {
                         match data.get(&token.to_string()) {
                             Some(Val::Frac(frac)) => { 
@@ -956,9 +967,14 @@ fn main() {
     let mut data: HashMap<String, Val> = HashMap::<String, Val>::new();
     data.insert("".to_string(), Val::Frac(Frac::new_int(0)));
     let mut last_line: String = "help".to_string();
+    let mut rl = rustyline::Editor::<()>::new().expect("user input");
     while last_line != "quit" && last_line != "exit" && last_line != "stop" {
-        code = String::new();    // Clear out any old commands
-        io::stdin().read_line(&mut code).expect("A simple prompt to process");    // Take in input
+        code = match rl.readline("") {
+            Ok(line) => {line},
+            Err(_) => {"quit".to_string()}
+        };
+        //code = String::new();    // Clear out any old commands
+        //io::stdin().read_line(&mut code).expect("A simple prompt to process");    // Take in input
         code = code.trim().to_string();    // Remove the newlines
         if code == "quit" || code == "exit" || code == "stop" {
             println!("Bye :)");
