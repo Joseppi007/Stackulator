@@ -543,7 +543,17 @@ impl ops::Div<Val> for Val {
     }
 }
 
-fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Result<Stack, String> {
+impl Val {
+    pub fn as_bool(&self) -> bool {
+        match self {
+            Val::Frac(frac) => {frac.num != 0},
+            Val::Stack(stack) => {stack.data.len() != 0},
+            Val::Func(_func) => {false}
+        }
+    }
+}
+
+fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -> Result<(HashMap<String, Val>, Stack), String> {
     //if code.to_string() == "clear" { return Ok("\x1b[1;1H\x1b[2J\x1b[33mScreen Cleared\x1b[0m".to_string()); }
     //if code.to_string() == "" || code.to_string() == "help" { return Ok("Type numbers to push them to the stack, and type opperators to perform them on elements on the stack.\n\tEX:\t2 2 +\n\t\t4".to_string()); }
     //let binding = code.to_string().trim().to_string();
@@ -555,6 +565,8 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
     tokens = tokens.iter().filter(|&token| token.to_string().as_str() != "").cloned().collect();
     //let mut stack: LinkedList<Frac> = LinkedList::<Frac>::new();
     //for token in &tokens {
+    let mut stack = stack_copy.clone();
+    let mut data = data_copy.clone();
     while tokens.len() > 0 {
         let token = tokens.pop().ok_or("Non-token tried to run")?;
         if token.chars().all(char::is_numeric) {
@@ -621,7 +633,7 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
                     let v = stack.pop();
                     match v {
                         Some(some) => { print!("{}", some); },
-                        None => {}
+                        None => { None.ok_or("Can't print nothing.")? }
                     }
                 },
                 "println" => {
@@ -642,8 +654,8 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
                     let v = stack.pop();
                     match v {
                         Some(Val::Frac(f)) => { print!("{}", char::from_u32(f.int() as u32).ok_or("Cannot make char")?); },
-                        Some(_) => {},
-                        None => {},
+                        Some(_) => {None.ok_or("Can't convert to a char")?},
+                        None => {None.ok_or("Nothing to make a char from")?},
                     }
                 },
                 "do" => {
@@ -656,8 +668,8 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
                                 tokens.push(t);
                             }
                         },
-                        Some(_) => {},
-                        None => {},
+                        Some(_) => {None.ok_or("Cannot run as a function")?},
+                        None => {None.ok_or("Nothing to be done")?},
                     }
                 },
                 "do_on" | "`" => {
@@ -666,15 +678,17 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
                     match f {
                         Some(Val::Func(func)) => {
                             match s {
-                                Some(Val::Stack(mut other_stack)) => {
-                                    stack.push(Val::Stack(eval(&func.code, data, &mut other_stack)?));
+                                Some(Val::Stack(other_stack)) => {
+                                    let (data_new, stack_new) = eval(&func.code, data.clone(), other_stack.clone())?;
+                                    data = data_new;
+                                    stack.push(Val::Stack(stack_new));
                                 },
-                                Some(_) => {},
-                                None => {}
+                                Some(_) => {None.ok_or("Stack not actually a stack")?},
+                                None => {None.ok_or("No stack provided")?}
                             }
                         },
-                        Some(_) => {},
-                        None => {},
+                        Some(_) => {None.ok_or("Function not a function")?},
+                        None => {None.ok_or("No function provided")?},
                     }
                 },
                 "pop" => {
@@ -795,13 +809,82 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
                         Val::Func(_) => {None.ok_or("Incomperable :|")?;},
                     }
                 },
-                "not" => {},
-                "and" => {},
-                "or" => {}
-                "xor" => {},
-                "if" => {},
-                "while" => {},
-                "rand" | "?" => {},
+                "not" => {
+                    let v = stack.pop().ok_or("Nothing to negate")?;
+                    match v {
+                        Val::Frac(f) => {
+                            if f.num == 0 {
+                                stack.push(Val::Frac(Frac::new_int(1)));
+                            } else {
+                                stack.push(Val::Frac(Frac::new_int(0)));
+                            }
+                        },
+                        Val::Stack(_) => {None.ok_or("Cannot negate a stack")?;},
+                        Val::Func(_) => {None.ok_or("Cannot negate a function")?;},
+                    }
+                },
+                "and" => {
+                    let b = stack.pop().ok_or("Missing an argument in and")?;
+                    let a = stack.pop().ok_or("Missing an argument in and")?;
+                    if a.as_bool() && b.as_bool() {
+                        stack.push(Val::Frac(Frac::new_int(1)));
+                    } else {
+                        stack.push(Val::Frac(Frac::new_int(0)));
+                    }
+                },
+                "or" => {
+                    let b = stack.pop().ok_or("Missing an argument in and")?;
+                    let a = stack.pop().ok_or("Missing an argument in and")?;
+                    if a.as_bool() || b.as_bool() {
+                        stack.push(Val::Frac(Frac::new_int(1)));
+                    } else {
+                        stack.push(Val::Frac(Frac::new_int(0)));
+                    }
+                }
+                "xor" => {
+                    let b = stack.pop().ok_or("Missing an argument in and")?;
+                    let a = stack.pop().ok_or("Missing an argument in and")?;
+                    if a.as_bool() != b.as_bool() {
+                        stack.push(Val::Frac(Frac::new_int(1)));
+                    } else {
+                        stack.push(Val::Frac(Frac::new_int(0)));
+                    }
+                },
+                "if" => { // bool true_func false_func if
+                    let func_false = stack.pop().ok_or("Missing function")?;
+                    let func_true = stack.pop().ok_or("Missing function")?;
+                    let b = stack.pop().ok_or("Missing bool")?;
+                    if b.as_bool() {
+                        match func_true {
+                            Val::Func(func) => { (data, stack) = eval(&func.code, data.clone(), stack.clone())?; },
+                            Val::Stack(_) => { None.ok_or("Stacks aren't functions.")?; },
+                            Val::Frac(_) => { None.ok_or("Fractions aren't functions.")?; },
+                        }
+                    } else {
+                        match func_false {
+                            Val::Func(func) => { (data, stack) = eval(&func.code, data.clone(), stack.clone())?; },
+                            Val::Stack(_) => { None.ok_or("Stacks aren't functions.")?; },
+                            Val::Frac(_) => { None.ok_or("Fractions aren't functions.")?; },
+                        }
+                    }
+                },
+                "while" => { // bool func while
+                    let f = stack.pop().ok_or("Missing function")?;
+                    match f {
+                        Val::Func(func) => { 
+                            loop {
+                                let b = stack.pop().ok_or("Missing bool")?;
+                                if !b.as_bool() { break; }
+                                (data, stack) = eval(&func.code, data.clone(), stack.clone())?;
+                            }
+                        },
+                        Val::Stack(_) => { None.ok_or("Stacks aren't functions.")?; },
+                        Val::Frac(_) => { None.ok_or("Fractions aren't functions.")?; },
+                    }
+                },
+                "rand" | "?" => { // lower upper rand
+                    
+                },
                 _ => {
                     if token.substring(0, 2) == "<<" { // load var
                         let var_name = token.substring(2, token.len());
@@ -835,7 +918,7 @@ fn eval(code: &String, data: &mut HashMap<String, Val>, stack: &mut Stack) -> Re
         }
         None => {return Err("Nothing to print left on the stack".to_string());}
     }*/
-    return Ok(stack.clone());
+    return Ok((data.clone(), stack.clone()));
     //Ok(stack.pop().ok_or("Nothing to print left on stack").to_string())
 }
 
@@ -853,10 +936,11 @@ fn main() {
             println!("Bye :)");
             last_line = code;
         } else if code == "" {
-            let mut stack = Stack::new();
-            let r = eval(&last_line, &mut data, &mut stack);
+            let stack = Stack::new();
+            let r = eval(&last_line, data.clone(), stack.clone());
             match r {
-                Ok(o) => {
+                Ok((data_new, o)) => {
+                    data = data_new;
                     match o.top() {
                         Some(v) => {
                             data.insert("".to_string(), v.clone());
@@ -872,10 +956,11 @@ fn main() {
                 }
             }
         } else {
-            let mut s: Stack = Stack::new();
-            let r = eval(&code, &mut data, &mut s);
+            let s: Stack = Stack::new();
+            let r = eval(&code, data.clone(), s.clone());
             match r {
-                Ok(o) => {
+                Ok((data_new, o)) => {
+                    data = data_new;
                     match o.top() {
                         Some(v) => {
                             data.insert("".to_string(), v.clone());
