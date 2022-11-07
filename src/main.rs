@@ -283,9 +283,9 @@ impl fmt::Display for Stack {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut s: String = "[".to_string();
         for e in &self.data {
-            s = format!("{}{}, ", s, e);
+            s = format!("{}{} ", s, e);
         }
-        s = format!("{}]", s);
+        s = format!("{}]", s.substring(0, s.len()-1));
         write!(f, "{}", s) 
     }
 }
@@ -359,11 +359,11 @@ impl Func {
                         next = next.to_owned() + char.to_string().as_str();
                     }
                 }
-                '(' => {
+                '(' | '[' | '{' => {
                     parentheses_counter+=1;
                     next = next.to_owned() + char.to_string().as_str();
                 }
-                ')' => {
+                ')' | ']' | '}' => {
                     parentheses_counter-=1;
                     next = next.to_owned() + char.to_string().as_str();
                 }
@@ -1088,6 +1088,8 @@ pub fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -
                                 }
                                 match evt.code {
                                     crossterm::event::KeyCode::Char(character) => { c = character as i128; break; },
+                                    crossterm::event::KeyCode::Esc => { break; },
+                                    crossterm::event::KeyCode::Enter => { c = 10; break; },
                                     _ => {}
                                 }
                             },
@@ -1117,6 +1119,11 @@ pub fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -
                         }
                     } else if token.substring(0, 1) == "(" && token.substring(token.len()-1, token.len()) == ")" {
                         stack.push(Val::Func(Func::new(token.substring(1, token.len()-1).to_string())));
+                    } else if token.substring(0, 1) == "[" && token.substring(token.len()-1, token.len()) == "]" {
+                        stack.push(Val::Stack(Stack::new()));
+                        stack.push(Val::Func(Func::new(token.substring(1, token.len()-1).to_string())));
+                        tokens.push("rev".to_string());
+                        tokens.push("`".to_string());
                     } else if token.substring(0, 1) == "{" && token.substring(token.len()-1, token.len()) == "}" {
                         (data, stack) = eval_file(token.substring(1, token.len()-1), data.clone(), stack.clone())?;
                     } else if data.contains_key(&token.to_string()) {
