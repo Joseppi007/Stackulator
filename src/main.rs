@@ -1210,7 +1210,7 @@ fn main() {
                             println!("{}", v);
                         }
                         None => {
-                            println!("Nothing to print left on the stack");
+                            //println!("Nothing to print left on the stack");
                         }
                     }
                 },
