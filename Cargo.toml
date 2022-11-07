@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 substring = "1.4.5"
+rand = "0.8.5"
+rustyline = "10.0.0"
+crossterm = "0.25.0"

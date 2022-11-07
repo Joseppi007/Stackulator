@@ -6,7 +6,8 @@ use substring::Substring;
 use rand::Rng;
 use std::fs;
 use rustyline;
-//use std::fmt::Write;
+use crossterm;
+use std::io::Write;
 //use std::rc::Rc;
 //use std::cell::RefCell;
 
@@ -696,7 +697,7 @@ pub fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -
                 "print" => {
                     let v = stack.pop();
                     match v {
-                        Some(some) => { print!("{}", some); },
+                        Some(some) => { print!("{}", some); match std::io::stdout().flush() { _ => {  } } },
                         None => { None.ok_or("Can't print nothing.")? }
                     }
                 },
@@ -717,7 +718,10 @@ pub fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -
                 "pchar" => {
                     let v = stack.pop();
                     match v {
-                        Some(Val::Frac(f)) => { print!("{}", char::from_u32(f.int() as u32).ok_or("Cannot make char")?); },
+                        Some(Val::Frac(f)) => {
+                            print!("{}", char::from_u32(f.int() as u32).ok_or("Cannot make char")?);
+                            match std::io::stdout().flush() { _ => {  } }
+                        },
                         Some(_) => {None.ok_or("Can't convert to a char")?},
                         None => {None.ok_or("Nothing to make a char from")?},
                     }
@@ -1070,6 +1074,29 @@ pub fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -
                         Some(Val::Func(_)) => {None.ok_or("I don't want to let you reverse functions.")?;},
                         None=> {None.ok_or("You can't reverse nothing!")?;}
                     }
+                },
+                "rchar" => { // read char
+                    let mut c: i128 = 0;
+                    match crossterm::terminal::enable_raw_mode() { _ => {} }
+                    loop {
+                        match crossterm::event::read() {
+                            Ok(crossterm::event::Event::Key(evt)) => {
+                                if evt.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
+                                    match crossterm::terminal::disable_raw_mode() { _ => {} }
+                                    None.ok_or("Ctrl pressed while taking input")?;
+                                    break;
+                                }
+                                match evt.code {
+                                    crossterm::event::KeyCode::Char(character) => { c = character as i128; break; },
+                                    _ => {}
+                                }
+                            },
+                            Ok(_) => {  },
+                            Err(_) => { break; }
+                        }
+                    }
+                    match crossterm::terminal::disable_raw_mode() { _ => {} }
+                    stack.push(Val::Frac(Frac::new_int(c)));
                 },
                 _ => {
                     if token.substring(0, 2) == "<<" { // load var
