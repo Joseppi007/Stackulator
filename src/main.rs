@@ -197,7 +197,7 @@ impl ops::Rem<Frac> for Frac {
     type Output = Frac;
     fn rem(self, _rhs: Frac) -> Frac {
         let mut r = self.clone();
-        while r > _rhs {
+        while r >= _rhs {
             r = r - _rhs;
         }
         while r < Frac::new_int(0) {
