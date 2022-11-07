@@ -279,6 +279,17 @@ impl ops::Add<Stack> for Stack {
     }
 }
 
+impl ops::Mul<Frac> for Stack {
+    type Output = Stack;
+    fn mul(self, _rhs: Frac) -> Stack {
+        let mut r = Stack::new();
+        for _i in 0.._rhs.int() {
+            r = r + self.clone();
+        }
+        return r;
+    }
+}
+
 impl fmt::Display for Stack {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut s: String = "[".to_string();
@@ -516,13 +527,13 @@ impl ops::Mul<Val> for Val {
             Val::Frac(frac0) => {
                 match _rhs {
                     Val::Frac(frac1) => {Some(Val::Frac(frac0 * frac1))},
-                    Val::Stack(_stack1) => {None},
+                    Val::Stack(stack1) => {Some(Val::Stack(stack1 * frac0))},
                     Val::Func(func1) => {Some(Val::Func(func1 * frac0))}
                 }
             },
-            Val::Stack(_stack0) => {
+            Val::Stack(stack0) => {
                 match _rhs {
-                    Val::Frac(_frac1) => {None},
+                    Val::Frac(frac1) => {Some(Val::Stack(stack0 * frac1))},
                     Val::Stack(_stack1) => {None},
                     Val::Func(_func1) => {None}
                 }
