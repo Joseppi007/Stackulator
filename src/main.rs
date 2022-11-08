@@ -1099,7 +1099,12 @@ pub fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -
                                 }
                                 match evt.code {
                                     crossterm::event::KeyCode::Char(character) => { c = character as i128; break; },
-                                    crossterm::event::KeyCode::Esc => { break; },
+                                    crossterm::event::KeyCode::Esc => {
+                                        if evt.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
+                                            c = 27;
+                                        }
+                                        break;
+                                    },
                                     crossterm::event::KeyCode::Enter => { c = 10; break; },
                                     _ => {}
                                 }
