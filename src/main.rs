@@ -1092,13 +1092,15 @@ pub fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -
                     loop {
                         match crossterm::event::read() {
                             Ok(crossterm::event::Event::Key(evt)) => {
-                                if evt.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
-                                    match crossterm::terminal::disable_raw_mode() { _ => {} }
-                                    None.ok_or("Ctrl pressed while taking input")?;
-                                    break;
-                                }
                                 match evt.code {
-                                    crossterm::event::KeyCode::Char(character) => { c = character as i128; break; },
+                                    crossterm::event::KeyCode::Char(character) => {
+                                        c = character as i128; break;
+                                        if ( c == 99 || c == 100 ) && evt.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
+                                            match crossterm::terminal::disable_raw_mode() { _ => {} }
+                                            Err("Ctrl-C or Ctrl-D pressed while taking input")
+                                            break;
+                                        }
+                                    },
                                     crossterm::event::KeyCode::Esc => {
                                         if evt.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
                                             c = 27;
