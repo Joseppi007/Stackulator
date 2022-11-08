@@ -1099,14 +1099,12 @@ pub fn eval(code: &String, data_copy: HashMap<String, Val>, stack_copy: Stack) -
                                             match crossterm::terminal::disable_raw_mode() { _ => {} }
                                             return Err("Ctrl-C or Ctrl-D pressed while taking input".to_string());
                                         }
-                                        break;
-                                    },
-                                    crossterm::event::KeyCode::Esc => {
-                                        if evt.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
+                                        if ( c == 101 ) && evt.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
                                             c = 27;
                                         }
                                         break;
                                     },
+                                    crossterm::event::KeyCode::Esc => break,
                                     crossterm::event::KeyCode::Enter => { c = 10; break; },
                                     _ => {}
                                 }
